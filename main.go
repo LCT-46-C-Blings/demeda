@@ -5,11 +5,31 @@ import (
 	"net/http"
 	"time"
 
+	_ "demeda/docs"
+
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
+// @title Demo Medical Database API
+// @version 1.0
+// @description REST API для медицинской клиники с управлением пациентами, врачами, приемами и анамнезом
+// @termsOfService http://swagger.io/terms/
+
+// @host localhost:8080
+// @BasePath /
+// @schemes http
+
+// ErrorResponse представляет стандартный ответ об ошибке
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+// Patient представляет пациента клиники
+// @Description Информация о пациенте
 type Patient struct {
 	ID             uint             `gorm:"primaryKey" json:"id"`
 	CreatedAt      time.Time        `json:"created_at"`
@@ -22,6 +42,8 @@ type Patient struct {
 	MedicalHistory []MedicalHistory `json:"medical_history,omitempty"`
 }
 
+// Doctor представляет врача клиники
+// @Description Информация о враче
 type Doctor struct {
 	ID             uint          `gorm:"primaryKey" json:"id"`
 	CreatedAt      time.Time     `json:"created_at"`
@@ -32,6 +54,8 @@ type Doctor struct {
 	Appointments   []Appointment `json:"appointments,omitempty"`
 }
 
+// Appointment представляет медицинский прием
+// @Description Информация о медицинском приеме
 type Appointment struct {
 	ID           uint          `gorm:"primaryKey" json:"id"`
 	CreatedAt    time.Time     `json:"created_at"`
@@ -46,6 +70,8 @@ type Appointment struct {
 	MedicalTests []MedicalTest `json:"medical_tests,omitempty"`
 }
 
+// MedicalTest представляет медицинский тест
+// @Description Результаты медицинских тестов
 type MedicalTest struct {
 	ID             uint        `gorm:"primaryKey" json:"id"`
 	CreatedAt      time.Time   `json:"created_at"`
@@ -57,6 +83,8 @@ type MedicalTest struct {
 	Appointment    Appointment `gorm:"foreignKey:AppointmentID" json:"appointment,omitempty"`
 }
 
+// MedicalHistory представляет запись медицинского анамнеза
+// @Description Медицинский анамнез пациента
 type MedicalHistory struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -173,34 +201,69 @@ func main() {
 	}
 
 	// Запуск сервера
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	fmt.Println("Сервер запущен на http://localhost:8080")
+	fmt.Println("Swagger документация доступна на http://localhost:8080/swagger/index.html")
 	router.Run(":8080")
 }
 
 // Обработчики для пациентов
+
+// GetPatients godoc
+// @Summary Получить список пациентов
+// @Description Получить список всех пациентов
+// @Tags patients
+// @Accept json
+// @Produce json
+// @Success 200 {array} Patient
+// @Failure 500 {object} ErrorResponse
+// @Router /patients [get]
 func getPatients(c *gin.Context) {
 	var patients []Patient
 	if err := db.Find(&patients).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, patients)
 }
 
+// GetPatient godoc
+// @Summary Получить пациента по ID
+// @Description Получить подробную информацию о пациенте включая анамнез и приемы
+// @Tags patients
+// @Accept json
+// @Produce json
+// @Param id path int true "ID пациента"
+// @Success 200 {object} Patient
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /patients/{id} [get]
 func getPatient(c *gin.Context) {
 	id := c.Param("id")
 	var patient Patient
 	if err := db.Preload("MedicalHistory").Preload("Appointments").Preload("Appointments.Doctor").First(&patient, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Patient not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "Patient not found"})
 		return
 	}
 	c.JSON(http.StatusOK, patient)
 }
 
+// CreatePatient godoc
+// @Summary Создать нового пациента
+// @Description Создать запись нового пациента в системе
+// @Tags patients
+// @Accept json
+// @Produce json
+// @Param patient body CreatePatientRequest true "Данные пациента"
+// @Success 201 {object} Patient
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /patients [post]
 func createPatient(c *gin.Context) {
 	var req CreatePatientRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -213,24 +276,37 @@ func createPatient(c *gin.Context) {
 	}
 
 	if err := db.Create(&patient).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusCreated, patient)
 }
 
+// UpdatePatient godoc
+// @Summary Обновить данные пациента
+// @Description Обновить информацию о существующем пациенте
+// @Tags patients
+// @Accept json
+// @Produce json
+// @Param id path int true "ID пациента"
+// @Param patient body CreatePatientRequest true "Обновленные данные пациента"
+// @Success 200 {object} Patient
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /patients/{id} [put]
 func updatePatient(c *gin.Context) {
 	id := c.Param("id")
 	var patient Patient
 	if err := db.First(&patient, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Patient not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "Patient not found"})
 		return
 	}
 
 	var req CreatePatientRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -241,73 +317,145 @@ func updatePatient(c *gin.Context) {
 	patient.Email = req.Email
 
 	if err := db.Save(&patient).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, patient)
 }
 
+// DeletePatient godoc
+// @Summary Удалить пациента
+// @Description Удалить запись пациента из системы
+// @Tags patients
+// @Accept json
+// @Produce json
+// @Param id path int true "ID пациента"
+// @Success 200 {object} string
+// @Failure 500 {object} ErrorResponse
+// @Router /patients/{id} [delete]
 func deletePatient(c *gin.Context) {
 	id := c.Param("id")
 	if err := db.Delete(&Patient{}, id).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Patient deleted"})
+	c.JSON(http.StatusOK, "Patient deleted")
 }
 
+// GetPatientAppointments godoc
+// @Summary Получить приемы пациента
+// @Description Получить список всех приемов конкретного пациента
+// @Tags patients
+// @Accept json
+// @Produce json
+// @Param id path int true "ID пациента"
+// @Success 200 {array} Appointment
+// @Failure 500 {object} ErrorResponse
+// @Router /patients/{id}/appointments [get]
 func getPatientAppointments(c *gin.Context) {
 	id := c.Param("id")
 	var appointments []Appointment
 	if err := db.Preload("Doctor").Where("patient_id = ?", id).Find(&appointments).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, appointments)
 }
 
+// GetPatientMedicalHistory godoc
+// @Summary Получить анамнез пациента
+// @Description Получить медицинский анамнез конкретного пациента
+// @Tags patients
+// @Accept json
+// @Produce json
+// @Param id path int true "ID пациента"
+// @Success 200 {array} MedicalHistory
+// @Failure 500 {object} ErrorResponse
+// @Router /patients/{id}/medical-history [get]
 func getPatientMedicalHistory(c *gin.Context) {
 	id := c.Param("id")
 	var history []MedicalHistory
 	if err := db.Where("patient_id = ?", id).Find(&history).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, history)
 }
 
 // Обработчики для врачей
+
+// GetDoctors godoc
+// @Summary Получить список врачей
+// @Description Получить список всех врачей клиники
+// @Tags doctors
+// @Accept json
+// @Produce json
+// @Success 200 {array} Doctor
+// @Failure 500 {object} ErrorResponse
+// @Router /doctors [get]
 func getDoctors(c *gin.Context) {
 	var doctors []Doctor
 	if err := db.Find(&doctors).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, doctors)
 }
 
+// GetDoctor godoc
+// @Summary Получить врача по ID
+// @Description Получить подробную информацию о враче
+// @Tags doctors
+// @Accept json
+// @Produce json
+// @Param id path int true "ID врача"
+// @Success 200 {object} Doctor
+// @Failure 404 {object} ErrorResponse
+// @Router /doctors/{id} [get]
 func getDoctor(c *gin.Context) {
 	id := c.Param("id")
 	var doctor Doctor
 	if err := db.First(&doctor, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Doctor not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "Doctor not found"})
 		return
 	}
 	c.JSON(http.StatusOK, doctor)
 }
 
+// GetDoctorAppointments godoc
+// @Summary Получить приемы врача
+// @Description Получить список всех приемов конкретного врача
+// @Tags doctors
+// @Accept json
+// @Produce json
+// @Param id path int true "ID врача"
+// @Success 200 {array} Appointment
+// @Failure 500 {object} ErrorResponse
+// @Router /doctors/{id}/appointments [get]
 func getDoctorAppointments(c *gin.Context) {
 	id := c.Param("id")
 	var appointments []Appointment
 	if err := db.Preload("Patient").Where("doctor_id = ?", id).Find(&appointments).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, appointments)
 }
 
 // Обработчики для приемов
+
+// GetAppointments godoc
+// @Summary Получить список приемов
+// @Description Получить список медицинских приемов с возможностью фильтрации
+// @Tags appointments
+// @Accept json
+// @Produce json
+// @Param patient_id query int false "Фильтр по ID пациента"
+// @Param doctor_id query int false "Фильтр по ID врача"
+// @Success 200 {array} Appointment
+// @Failure 500 {object} ErrorResponse
+// @Router /appointments [get]
 func getAppointments(c *gin.Context) {
 	var appointments []Appointment
 	query := db.Preload("Patient").Preload("Doctor")
@@ -323,26 +471,47 @@ func getAppointments(c *gin.Context) {
 	}
 
 	if err := query.Find(&appointments).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, appointments)
 }
 
+// GetAppointment godoc
+// @Summary Получить прием по ID
+// @Description Получить подробную информацию о медицинском приеме
+// @Tags appointments
+// @Accept json
+// @Produce json
+// @Param id path int true "ID приема"
+// @Success 200 {object} Appointment
+// @Failure 404 {object} ErrorResponse
+// @Router /appointments/{id} [get]
 func getAppointment(c *gin.Context) {
 	id := c.Param("id")
 	var appointment Appointment
 	if err := db.Preload("Patient").Preload("Doctor").Preload("MedicalTests").First(&appointment, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Appointment not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "Appointment not found"})
 		return
 	}
 	c.JSON(http.StatusOK, appointment)
 }
 
+// CreateAppointment godoc
+// @Summary Создать новый прием
+// @Description Создать запись о медицинском приеме
+// @Tags appointments
+// @Accept json
+// @Produce json
+// @Param appointment body CreateAppointmentRequest true "Данные приема"
+// @Success 201 {object} Appointment
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /appointments [post]
 func createAppointment(c *gin.Context) {
 	var req CreateAppointmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -356,24 +525,37 @@ func createAppointment(c *gin.Context) {
 	}
 
 	if err := db.Create(&appointment).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusCreated, appointment)
 }
 
+// UpdateAppointment godoc
+// @Summary Обновить данные приема
+// @Description Обновить информацию о медицинском приеме
+// @Tags appointments
+// @Accept json
+// @Produce json
+// @Param id path int true "ID приема"
+// @Param appointment body CreateAppointmentRequest true "Обновленные данные приема"
+// @Success 200 {object} Appointment
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /appointments/{id} [put]
 func updateAppointment(c *gin.Context) {
 	id := c.Param("id")
 	var appointment Appointment
 	if err := db.First(&appointment, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Appointment not found"})
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "Appointment not found"})
 		return
 	}
 
 	var req CreateAppointmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -385,33 +567,65 @@ func updateAppointment(c *gin.Context) {
 	appointment.Notes = req.Notes
 
 	if err := db.Save(&appointment).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, appointment)
 }
 
+// DeleteAppointment godoc
+// @Summary Удалить прием
+// @Description Удалить запись о медицинском приеме
+// @Tags appointments
+// @Accept json
+// @Produce json
+// @Param id path int true "ID приема"
+// @Success 200 {object} string
+// @Failure 500 {object} ErrorResponse
+// @Router /appointments/{id} [delete]
 func deleteAppointment(c *gin.Context) {
 	id := c.Param("id")
 	if err := db.Delete(&Appointment{}, id).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Appointment deleted"})
+	c.JSON(http.StatusOK, "Appointment deleted")
 }
 
+// GetAppointmentTests godoc
+// @Summary Получить тесты приема
+// @Description Получить медицинские тесты конкретного приема
+// @Tags appointments
+// @Accept json
+// @Produce json
+// @Param id path int true "ID приема"
+// @Success 200 {array} MedicalTest
+// @Failure 500 {object} ErrorResponse
+// @Router /appointments/{id}/tests [get]
 func getAppointmentTests(c *gin.Context) {
 	id := c.Param("id")
 	var tests []MedicalTest
 	if err := db.Where("appointment_id = ?", id).Find(&tests).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, tests)
 }
 
 // Обработчики для анамнеза
+
+// GetMedicalHistory godoc
+// @Summary Получить анамнез
+// @Description Получить записи медицинского анамнеза с возможностью фильтрации
+// @Tags medical-history
+// @Accept json
+// @Produce json
+// @Param patient_id query int false "Фильтр по ID пациента"
+// @Param type query string false "Фильтр по типу анамнеза"
+// @Success 200 {array} MedicalHistory
+// @Failure 500 {object} ErrorResponse
+// @Router /medical-history [get]
 func getMedicalHistory(c *gin.Context) {
 	var history []MedicalHistory
 	query := db.Preload("Patient")
@@ -425,16 +639,27 @@ func getMedicalHistory(c *gin.Context) {
 	}
 
 	if err := query.Find(&history).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, history)
 }
 
+// CreateMedicalHistory godoc
+// @Summary Создать запись анамнеза
+// @Description Создать новую запись в медицинском анамнезе пациента
+// @Tags medical-history
+// @Accept json
+// @Produce json
+// @Param history body CreateMedicalHistoryRequest true "Данные анамнеза"
+// @Success 201 {object} MedicalHistory
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /medical-history [post]
 func createMedicalHistory(c *gin.Context) {
 	var req CreateMedicalHistoryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -449,20 +674,30 @@ func createMedicalHistory(c *gin.Context) {
 	}
 
 	if err := db.Create(&history).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusCreated, history)
 }
 
+// DeleteMedicalHistory godoc
+// @Summary Удалить запись анамнеза
+// @Description Удалить запись из медицинского анамнеза
+// @Tags medical-history
+// @Accept json
+// @Produce json
+// @Param id path int true "ID записи анамнеза"
+// @Success 200 {object} string
+// @Failure 500 {object} ErrorResponse
+// @Router /medical-history/{id} [delete]
 func deleteMedicalHistory(c *gin.Context) {
 	id := c.Param("id")
 	if err := db.Delete(&MedicalHistory{}, id).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Medical history record deleted"})
+	c.JSON(http.StatusOK, "Medical history record deleted")
 }
 
 func seedDatabase(db *gorm.DB) {

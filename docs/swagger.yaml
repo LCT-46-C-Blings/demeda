@@ -1,0 +1,718 @@
+basePath: /
+definitions:
+  main.Appointment:
+    description: Информация о медицинском приеме
+    properties:
+      created_at:
+        type: string
+      date:
+        type: string
+      diagnosis:
+        type: string
+      doctor:
+        $ref: '#/definitions/main.Doctor'
+      doctor_id:
+        type: integer
+      id:
+        type: integer
+      medical_tests:
+        items:
+          $ref: '#/definitions/main.MedicalTest'
+        type: array
+      notes:
+        type: string
+      patient:
+        $ref: '#/definitions/main.Patient'
+      patient_id:
+        type: integer
+      treatment:
+        type: string
+    type: object
+  main.CreateAppointmentRequest:
+    properties:
+      date:
+        type: string
+      diagnosis:
+        type: string
+      doctor_id:
+        type: integer
+      notes:
+        type: string
+      patient_id:
+        type: integer
+      treatment:
+        type: string
+    required:
+    - date
+    - doctor_id
+    - patient_id
+    type: object
+  main.CreateMedicalHistoryRequest:
+    properties:
+      description:
+        type: string
+      history_type:
+        type: string
+      notes:
+        type: string
+      patient_id:
+        type: integer
+      severity:
+        type: string
+      start_date:
+        type: string
+      status:
+        type: string
+    required:
+    - description
+    - history_type
+    - patient_id
+    type: object
+  main.CreatePatientRequest:
+    properties:
+      birth_date:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      gender:
+        type: string
+      phone:
+        type: string
+    required:
+    - birth_date
+    - full_name
+    - gender
+    type: object
+  main.Doctor:
+    description: Информация о враче
+    properties:
+      appointments:
+        items:
+          $ref: '#/definitions/main.Appointment'
+        type: array
+      created_at:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: integer
+      phone:
+        type: string
+      specialization:
+        type: string
+    type: object
+  main.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  main.MedicalHistory:
+    description: Медицинский анамнез пациента
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      history_type:
+        type: string
+      id:
+        type: integer
+      notes:
+        type: string
+      patient:
+        $ref: '#/definitions/main.Patient'
+      patient_id:
+        type: integer
+      severity:
+        type: string
+      start_date:
+        type: string
+      status:
+        type: string
+    type: object
+  main.MedicalTest:
+    description: Результаты медицинских тестов
+    properties:
+      appointment:
+        $ref: '#/definitions/main.Appointment'
+      appointment_id:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      reference_range:
+        type: string
+      result:
+        type: string
+      unit:
+        type: string
+    type: object
+  main.Patient:
+    description: Информация о пациенте
+    properties:
+      appointments:
+        items:
+          $ref: '#/definitions/main.Appointment'
+        type: array
+      birth_date:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      gender:
+        type: string
+      id:
+        type: integer
+      medical_history:
+        items:
+          $ref: '#/definitions/main.MedicalHistory'
+        type: array
+      phone:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Медицинский анамнез пациента
+  termsOfService: http://swagger.io/terms/
+  title: Demo Medical Database API
+  version: "1.0"
+paths:
+  /appointments:
+    get:
+      consumes:
+      - application/json
+      description: Получить список медицинских приемов с возможностью фильтрации
+      parameters:
+      - description: Фильтр по ID пациента
+        in: query
+        name: patient_id
+        type: integer
+      - description: Фильтр по ID врача
+        in: query
+        name: doctor_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.Appointment'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Получить список приемов
+      tags:
+      - appointments
+    post:
+      consumes:
+      - application/json
+      description: Создать запись о медицинском приеме
+      parameters:
+      - description: Данные приема
+        in: body
+        name: appointment
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateAppointmentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.Appointment'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Создать новый прием
+      tags:
+      - appointments
+  /appointments/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удалить запись о медицинском приеме
+      parameters:
+      - description: ID приема
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Удалить прием
+      tags:
+      - appointments
+    get:
+      consumes:
+      - application/json
+      description: Получить подробную информацию о медицинском приеме
+      parameters:
+      - description: ID приема
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Appointment'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Получить прием по ID
+      tags:
+      - appointments
+    put:
+      consumes:
+      - application/json
+      description: Обновить информацию о медицинском приеме
+      parameters:
+      - description: ID приема
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Обновленные данные приема
+        in: body
+        name: appointment
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateAppointmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Appointment'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Обновить данные приема
+      tags:
+      - appointments
+  /appointments/{id}/tests:
+    get:
+      consumes:
+      - application/json
+      description: Получить медицинские тесты конкретного приема
+      parameters:
+      - description: ID приема
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.MedicalTest'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Получить тесты приема
+      tags:
+      - appointments
+  /doctors:
+    get:
+      consumes:
+      - application/json
+      description: Получить список всех врачей клиники
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.Doctor'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Получить список врачей
+      tags:
+      - doctors
+  /doctors/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Получить подробную информацию о враче
+      parameters:
+      - description: ID врача
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Doctor'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Получить врача по ID
+      tags:
+      - doctors
+  /doctors/{id}/appointments:
+    get:
+      consumes:
+      - application/json
+      description: Получить список всех приемов конкретного врача
+      parameters:
+      - description: ID врача
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.Appointment'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Получить приемы врача
+      tags:
+      - doctors
+  /medical-history:
+    get:
+      consumes:
+      - application/json
+      description: Получить записи медицинского анамнеза с возможностью фильтрации
+      parameters:
+      - description: Фильтр по ID пациента
+        in: query
+        name: patient_id
+        type: integer
+      - description: Фильтр по типу анамнеза
+        in: query
+        name: type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.MedicalHistory'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Получить анамнез
+      tags:
+      - medical-history
+    post:
+      consumes:
+      - application/json
+      description: Создать новую запись в медицинском анамнезе пациента
+      parameters:
+      - description: Данные анамнеза
+        in: body
+        name: history
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateMedicalHistoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.MedicalHistory'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Создать запись анамнеза
+      tags:
+      - medical-history
+  /medical-history/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удалить запись из медицинского анамнеза
+      parameters:
+      - description: ID записи анамнеза
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Удалить запись анамнеза
+      tags:
+      - medical-history
+  /patients:
+    get:
+      consumes:
+      - application/json
+      description: Получить список всех пациентов
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.Patient'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Получить список пациентов
+      tags:
+      - patients
+    post:
+      consumes:
+      - application/json
+      description: Создать запись нового пациента в системе
+      parameters:
+      - description: Данные пациента
+        in: body
+        name: patient
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreatePatientRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.Patient'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Создать нового пациента
+      tags:
+      - patients
+  /patients/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удалить запись пациента из системы
+      parameters:
+      - description: ID пациента
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Удалить пациента
+      tags:
+      - patients
+    get:
+      consumes:
+      - application/json
+      description: Получить подробную информацию о пациенте включая анамнез и приемы
+      parameters:
+      - description: ID пациента
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Patient'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Получить пациента по ID
+      tags:
+      - patients
+    put:
+      consumes:
+      - application/json
+      description: Обновить информацию о существующем пациенте
+      parameters:
+      - description: ID пациента
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Обновленные данные пациента
+        in: body
+        name: patient
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreatePatientRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Patient'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Обновить данные пациента
+      tags:
+      - patients
+  /patients/{id}/appointments:
+    get:
+      consumes:
+      - application/json
+      description: Получить список всех приемов конкретного пациента
+      parameters:
+      - description: ID пациента
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.Appointment'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Получить приемы пациента
+      tags:
+      - patients
+  /patients/{id}/medical-history:
+    get:
+      consumes:
+      - application/json
+      description: Получить медицинский анамнез конкретного пациента
+      parameters:
+      - description: ID пациента
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.MedicalHistory'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Получить анамнез пациента
+      tags:
+      - patients
+schemes:
+- http
+swagger: "2.0"

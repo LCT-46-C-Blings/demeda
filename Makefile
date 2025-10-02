@@ -7,15 +7,27 @@ MAIN_PACKAGE=.
 
 # Default target
 .PHONY:
-all: build
+all: clean build run
+
+# Run executable file
+run: build
+	$(BUILD_DIR)/$(BINARY_NAME)
 
 # Build for current platform
 build:
+	swag init
 	@mkdir -p $(BUILD_DIR)
 	$(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PACKAGE)
 
 # Clean build files
 clean:
-	rm -rf $(BUILD_DIR)
+	@if [ -d "$(BUILD_DIR)" ]; then \
+		echo "Удаляю $(BUILD_DIR)"; \
+		rm -rf $(BUILD_DIR); \
+	fi
+	@if [ -f "clinic.db" ]; then \
+		echo "Удаляю clinic.db"; \
+		rm -rf clinic.db; \
+	fi
 
 .PHONY: all build clean
