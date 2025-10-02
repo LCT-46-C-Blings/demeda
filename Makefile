@@ -15,7 +15,6 @@ run: build
 
 # Build for current platform
 build:
-	swag init
 	@mkdir -p $(BUILD_DIR)
 	$(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PACKAGE)
 
